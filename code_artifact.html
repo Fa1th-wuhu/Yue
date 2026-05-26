@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简阅 - 极简小说阅读平台</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <style>
+        /* 苹果系统默认字体排版 - SF Pro & PingFang SC */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            letter-spacing: -0.015em;
+        }
+
+        /* 极致平滑且高级的苹果弹性过渡效果 */
+        .apple-transition {
+            transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        /* 界面载入动画 (Spring Bounce) */
+        @keyframes appleSpring {
+            0% { opacity: 0; transform: scale(0.98) translateY(10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-apple-spring {
+            animation: appleSpring 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        /* 苹果原生卡片悬浮投影 */
+        .apple-card-shadow {
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.02);
+        }
+        .apple-card-shadow:hover {
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+            transform: scale(1.01);
+        }
+
+        /* 沉浸式阅读器主题定制 (对标 Apple Books) */
+        .theme-light {
+            background-color: #ffffff;
+            color: #1d1d1f;
+        }
+        .theme-sepia {
+            background-color: #f4ecd8;
+            color: #5c4326;
+        }
+        .theme-green {
+            background-color: #e3eedb;
+            color: #243d1a;
+        }
+        .theme-dark {
+            background-color: #151516;
+            color: #8e8e93;
+        }
+
+        /* 立体书籍仿真渐变层 */
+        .book-spine-effect {
+            background: linear-gradient(90deg, rgba(0,0,0,0.06) 0%, rgba(255,255,255,0.05) 3%, rgba(0,0,0,0.02) 8%, rgba(255,255,255,0.1) 12%, rgba(255,255,255,0) 25%);
+        }
+
+        /* 隐藏原生滚动条但保留功能 */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d2d2d7;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #86868b;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen">
+
+    <div id="app" class="flex flex-col min-h-screen max-w-6xl mx-auto bg-[#f5f5f7] relative pb-20 md:pb-12">
+        
+        <!-- 苹果风毛玻璃通知组件 (Toast) -->
+        <div v-if="toast.show" class="fixed top-8 left-1/2 -translate-x-1/2 z-50 flex items-center px-6 py-3.5 rounded-full bg-white/90 backdrop-blur-xl shadow-[0_16px_40px_rgba(0,0,0,0.06)] border border-neutral-200/50 transition-all duration-500 animate-apple-spring" role="alert">
+            <span class="mr-2.5 flex items-center justify-center w-5 h-5 rounded-full" :class="toast.type === 'success' ? 'bg-[#34c759] text-white' : 'bg-[#ff3b30] text-white'">
+                <svg v-if="toast.type === 'success'" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                <svg v-else class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </span>
+            <span class="text-xs font-semibold text-neutral-800 tracking-tight">{{ toast.message }}</span>
+        </div>
+
+        <!-- 第一层导航：Apple.com 经典极暗全球导航栏 (Global Nav) -->
+        <header class="w-full bg-[#161617]/95 backdrop-blur-md sticky top-0 z-50 text-[#f5f5f7] select-none text-[12px] font-normal tracking-wider">
+            <div class="max-w-5xl mx-auto px-6 h-12 flex justify-between items-center">
+                <!-- 标志 -->
+                <div class="flex items-center space-x-2 cursor-pointer apple-transition hover:opacity-80" @click="switchView('home')">
+                    <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.53c-.26-.81-1-1.4-1.9-1.4h-1v-3c0-.55-.45-1-1-1h-6v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                    </svg>
+                    <span class="font-bold text-white tracking-widest text-[13px]">简阅</span>
+                </div>
+
+                <!-- 导航目录 -->
+                <nav class="hidden md:flex space-x-12 text-[#cccccc] font-light">
+                    <button v-for="tab in [{id:'home',name:'书城'}, {id:'bookshelf',name:'我的书架'}, {id:'rank',name:'排行榜'}, {id:'category',name:'分类发现'}]"
+                            @click="switchView(tab.id)" 
+                            :class="currentView === tab.id || (tab.id === 'category' && currentView === 'categoryDetail') ? 'text-white font-normal' : 'hover:text-white'" 
+                            class="apple-transition">
+                        {{ tab.name }}
+                    </button>
+                </nav>
+
+                <!-- 用户状态与快速控制 -->
+                <div class="flex items-center space-x-5">
+                    <div v-if="currentUser" class="flex items-center space-x-3">
+                        <span class="text-[11px] text-neutral-400">你好, <strong class="text-white">{{ currentUser.username }}</strong></span>
+                        <span v-if="isAdmin" class="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold">管理员</span>
+                        <button @click="handleLogout" class="text-rose-400 hover:text-rose-300 transition text-[10px]">退出</button>
+                    </div>
+                    <button v-else @click="showLoginModal = true" class="text-neutral-300 hover:text-white font-medium text-[11px] bg-white/10 px-3 py-1 rounded-full apple-transition">
+                        登录
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 第二层导航：Apple Local Product Sub-Nav (产品线专属次导航) -->
+        <div class="w-full bg-white/80 backdrop-blur-md border-b border-neutral-200/50 sticky top-12 z-40 select-none">
+            <div class="max-w-5xl mx-auto px-6 h-12 flex justify-between items-center text-xs">
+                <div class="flex items-center space-x-2">
+                    <span class="font-semibold text-neutral-900 text-sm tracking-tight">简阅 1.0</span>
+                    <span class="text-[9px] text-[#0066cc] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full font-bold">STABLE</span>
+                </div>
+                
+                <!-- 仅当登录用户为管理员时，才显示管理中心入口 -->
+                <div class="flex items-center space-x-4">
+                    <button v-if="isAdmin" @click="showAdminModal = true" class="text-xs bg-[#0066cc] hover:bg-[#0077ed] text-white px-4 py-1.5 rounded-full font-medium apple-transition shadow-sm flex items-center gap-1.5">
+                        <span>⚙️ 管理中心</span>
+                    </button>
+                    <span v-else-if="currentUser" class="text-[11px] text-neutral-400 font-medium">✨ 读者尊享体验中</span>
+                    <span v-else class="text-[11px] text-neutral-400 font-medium">🔑 登录以解锁云书架</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主体内容区域 -->
+        <main class="flex-grow p-4 md:p-8 max-w-5xl mx-auto w-full">
+            
+            <!-- VIEW: 首页 / 书城 -->
+            <div v-if="currentView === 'home'" class="space-y-12 animate-apple-spring">
+                <!-- 每日推荐 Banner (iPhone 15 Pro 钛金属风格海报) -->
+                <div v-if="dailyRecBook" class="bg-[#121212] rounded-[32px] p-8 md:p-16 text-white relative overflow-hidden shadow-[0_24px_50px_rgba(0,0,0,0.08)] apple-transition hover:scale-[1.002] cursor-pointer" @click="viewBookDetail(dailyRecBook.id)">
+                    <div class="relative z-10 md:w-3/5 space-y-6">
+                        <span class="inline-block text-[#ff9f0a] text-[10px] font-bold tracking-widest bg-[#ff9f0a]/10 px-3 py-1 rounded-full border border-[#ff9f0a]/20">📢 TODAY'S SELECTION</span>
+                        <h2 class="text-4xl md:text-5xl font-extrabold tracking-tight leading-none text-white">
+                            {{ dailyRecBook.title }}
+                        </h2>
+                        <p class="text-sm text-neutral-400 font-medium">作者：{{ dailyRecBook.author }}  |  类型：{{ dailyRecBook.category }}</p>
+                        <p class="text-xs text-neutral-500 leading-relaxed font-normal max-w-md">
+                            以极简主义重构经典架构。这里没有多余的代码，只有直击核心的精妙算法与高效部署。点击立刻开启沉浸之旅。
+                        </p>
+                        <div class="pt-4 flex items-center space-x-6 text-xs text-[#0066cc] font-semibold">
+                            <span class="hover:underline">立即阅读 &gt;</span>
+                            <span class="text-neutral-500 font-normal">👁️ {{ dailyRecBook.views }} 浏览量</span>
+                        </div>
+                    </div>
+                    <!-- 右侧点缀：苹果科技风格的精美抽象图形 -->
+                    <div class="absolute right-0 bottom-0 top-0 w-2/5 hidden md:flex items-center justify-end opacity-20 pointer-events-none select-none pr-10">
+                        <svg class="w-72 h-72 text-white" fill="none" stroke="currentColor" stroke-width="0.5" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="9"/>
+                            <circle cx="12" cy="12" r="6"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- 小说列表 & 分类导航 -->
+                <div class="space-y-8">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
+                        <div>
+                            <h3 class="text-2xl font-bold text-neutral-900 tracking-tight">全部精品</h3>
+                            <p class="text-xs text-neutral-400 mt-1">精选多元品类，畅想无尽灵感</p>
+                        </div>
+                        <!-- 苹果无缝精细胶囊选择器 -->
+                        <div class="flex flex-wrap gap-1 bg-neutral-200/50 p-1 rounded-2xl w-fit">
+                            <button @click="filterCategory = '全部'" :class="filterCategory === '全部' ? 'bg-white text-neutral-950 shadow-[0_2px_8px_rgba(0,0,0,0.04)] font-semibold' : 'text-neutral-500 hover:text-neutral-900'" class="px-4 py-2 rounded-xl text-xs apple-transition font-medium">全部</button>
+                            <button v-for="cat in categories" @click="filterCategory = cat" :class="filterCategory === cat ? 'bg-white text-neutral-950 shadow-[0_2px_8px_rgba(0,0,0,0.04)] font-semibold' : 'text-neutral-500 hover:text-neutral-900'" class="px-4 py-2 rounded-xl text-xs apple-transition font-medium">{{ cat }}</button>
+                        </div>
+                    </div>
+
+                    <!-- 书籍 Apple Card 卡片列表 -->
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-8">
+                        <div v-for="book in filteredBooks" :key="book.id" class="group bg-white border border-neutral-200/40 rounded-[24px] p-5 apple-card-shadow apple-transition cursor-pointer flex flex-col justify-between" @click="viewBookDetail(book.id)">
+                            <div>
+                                <!-- 立体拟物感电子图书封面层 -->
+                                <div class="w-full h-44 rounded-2xl bg-gradient-to-br from-neutral-50 to-neutral-200/60 mb-5 relative overflow-hidden border border-neutral-200/20 group-hover:scale-[1.01] apple-transition flex items-center justify-center p-4">
+                                    <!-- 3D立体书脊拟物化投影 -->
+                                    <div class="absolute inset-y-0 left-0 w-full book-spine-effect"></div>
+                                    <div class="text-center relative z-10 px-2 space-y-2">
+                                        <span class="text-base font-extrabold text-neutral-900 tracking-tight line-clamp-2 px-2">{{ book.title }}</span>
+                                        <div class="w-6 h-0.5 bg-neutral-400 mx-auto"></div>
+                                        <span class="text-[11px] text-neutral-400 font-bold block">{{ book.author }}</span>
+                                    </div>
+                                </div>
+                                <h4 class="font-extrabold text-sm text-neutral-900 line-clamp-1 group-hover:text-[#0066cc] apple-transition">{{ book.title }}</h4>
+                                <p class="text-xs text-neutral-400 mt-1 font-medium">由 {{ book.author }} 撰写</p>
+                            </div>
+                            <div class="mt-5 pt-4 border-t border-neutral-100 flex justify-between items-center text-[10px] text-neutral-400 font-bold tracking-tight">
+                                <span class="flex items-center"><span class="mr-1">👁️</span> {{ book.views }} 热度</span>
+                                <span class="bg-neutral-100 text-neutral-600 px-3 py-1 rounded-full border border-neutral-200/20">{{ book.category }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: 个人书架 -->
+            <div v-if="currentView === 'bookshelf'" class="space-y-8 animate-apple-spring">
+                <div class="flex justify-between items-center pb-4 border-b border-neutral-200/60">
+                    <div>
+                        <h3 class="text-2xl font-bold text-neutral-900 tracking-tight">我的书架</h3>
+                        <p class="text-xs text-neutral-400 mt-1">这里收录了您收藏的 {{ bookshelfBooks.length }} 部经典</p>
+                    </div>
+                </div>
+
+                <!-- 未登录 -->
+                <div v-if="!currentUser" class="text-center py-24 bg-white rounded-[32px] border border-neutral-200/40 space-y-5 max-w-lg mx-auto">
+                    <p class="text-neutral-500 text-sm font-medium">请登录您的简阅账户以同步和存储云书架</p>
+                    <button @click="showLoginModal = true" class="bg-neutral-900 text-white text-xs px-6 py-3 rounded-full hover:bg-neutral-800 apple-transition font-bold">立即登录</button>
+                </div>
+
+                <!-- 空书架 -->
+                <div v-else-if="bookshelfBooks.length === 0" class="text-center py-24 bg-white rounded-[32px] border border-neutral-200/40 space-y-5 max-w-lg mx-auto">
+                    <p class="text-neutral-400 text-sm font-medium">您的书架尚未加入 any 小说</p>
+                    <button @click="switchView('home')" class="text-[#0066cc] border border-neutral-200 hover:bg-neutral-50 px-6 py-3 rounded-full apple-transition font-bold text-xs">浏览书城</button>
+                </div>
+
+                <!-- 书架列表 -->
+                <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div v-for="book in bookshelfBooks" :key="book.id" class="flex border border-neutral-200/40 rounded-[24px] p-5 bg-white hover:shadow-md apple-transition justify-between items-center">
+                        <div class="flex items-center space-x-4 cursor-pointer flex-1" @click="viewBookDetail(book.id)">
+                            <!-- 封面 -->
+                            <div class="w-16 h-20 bg-neutral-100 rounded-xl relative overflow-hidden flex flex-col justify-center items-center text-center p-2 border border-neutral-250">
+                                <div class="absolute inset-y-0 left-0 w-full book-spine-effect"></div>
+                                <span class="text-[9px] font-extrabold text-neutral-800 line-clamp-2 leading-tight relative z-10">{{ book.title }}</span>
+                            </div>
+                            <div class="space-y-1.5">
+                                <h4 class="font-extrabold text-sm text-neutral-900">{{ book.title }}</h4>
+                                <p class="text-xs text-neutral-400 font-medium">作者：{{ book.author }}</p>
+                                <span class="inline-block text-[9px] bg-neutral-100 text-neutral-600 px-2.5 py-0.5 rounded-full font-bold border border-neutral-200/20">{{ book.category }}</span>
+                            </div>
+                        </div>
+                        <button @click.stop="removeFromBookshelf(book.id)" class="text-xs text-rose-500 bg-rose-50/50 hover:bg-rose-100 hover:text-rose-600 px-4 py-2 rounded-full font-bold apple-transition">
+                            移出
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: 排行榜 -->
+            <div v-if="currentView === 'rank'" class="grid grid-cols-1 md:grid-cols-2 gap-10 animate-apple-spring">
+                <div class="space-y-6">
+                    <h3 class="text-xl font-bold text-neutral-900 pb-3 border-b border-neutral-200/60">🔥 最热阅读榜</h3>
+                    <div class="space-y-3">
+                        <div v-for="(book, index) in rankByViews" :key="book.id" @click="viewBookDetail(book.id)" class="flex items-center justify-between p-4 bg-white rounded-2xl border border-neutral-200/20 hover:bg-neutral-50/50 apple-transition cursor-pointer">
+                            <div class="flex items-center space-x-4">
+                                <span class="text-lg font-black w-6 text-center" :class="index < 3 ? 'text-neutral-900' : 'text-neutral-300'">0{{ index + 1 }}</span>
+                                <div>
+                                    <h4 class="font-extrabold text-sm text-neutral-900">{{ book.title }}</h4>
+                                    <p class="text-xs text-neutral-400 mt-0.5 font-medium">{{ book.author }} · {{ book.category }}</p>
+                                </div>
+                            </div>
+                            <span class="text-xs text-neutral-500 font-bold">👁️ {{ book.views }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <h3 class="text-xl font-bold text-neutral-900 pb-3 border-b border-neutral-200/60">👍 高分推荐榜</h3>
+                    <div class="space-y-3">
+                        <div v-for="(book, index) in rankByLikes" :key="book.id" @click="viewBookDetail(book.id)" class="flex items-center justify-between p-4 bg-white rounded-2xl border border-neutral-200/20 hover:bg-neutral-50/50 apple-transition cursor-pointer">
+                            <div class="flex items-center space-x-4">
+                                <span class="text-lg font-black w-6 text-center" :class="index < 3 ? 'text-neutral-900' : 'text-neutral-300'">0{{ index + 1 }}</span>
+                                <div>
+                                    <h4 class="font-extrabold text-sm text-neutral-900">{{ book.title }}</h4>
+                                    <p class="text-xs text-neutral-400 mt-0.5 font-medium">{{ book.author }} · {{ book.category }}</p>
+                                </div>
+                            </div>
+                            <span class="text-xs text-[#0066cc] font-bold">👍 {{ book.likes }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: 分类探索 (大类选择层) -->
+            <div v-if="currentView === 'category'" class="space-y-8 animate-apple-spring">
+                <div>
+                    <h3 class="text-3xl font-extrabold text-neutral-900 tracking-tight">分类发现</h3>
+                    <p class="text-sm text-neutral-400 mt-1">从这里开始，探索为您精心梳理的文学版块。</p>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 pt-2">
+                    <div v-for="cat in categories" :key="cat" @click="viewCategoryDetail(cat)" 
+                         class="p-8 bg-white border border-neutral-200/50 rounded-[28px] cursor-pointer apple-card-shadow apple-transition group relative overflow-hidden min-h-[160px] flex flex-col justify-between">
+                        <div>
+                            <span class="text-xs text-neutral-400 font-bold tracking-wider">CATEGORY</span>
+                            <h4 class="text-2xl font-black text-neutral-900 mt-2 group-hover:text-[#0066cc] apple-transition">{{ cat }}</h4>
+                        </div>
+                        <p class="text-xs text-[#0066cc] font-semibold flex items-center">
+                            探索精品 &gt;
+                        </p>
+                        <!-- 背景饰件 -->
+                        <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-neutral-50 rounded-full opacity-0 group-hover:opacity-100 apple-transition scale-150"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: 分类图书展示详情页 (全新升级的高端子版面) -->
+            <div v-if="currentView === 'categoryDetail' && filterCategory" class="space-y-10 animate-apple-spring">
+                <!-- 返回上一级分类发现 -->
+                <button @click="switchView('category')" class="flex items-center text-xs font-bold text-neutral-500 hover:text-neutral-950 apple-transition">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                    返回所有分类
+                </button>
+
+                <!-- 苹果展台级大分类名片区 -->
+                <div class="bg-white border border-neutral-200/40 rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-sm">
+                    <div class="relative z-10 max-w-xl space-y-4">
+                        <span class="text-xs font-bold tracking-widest text-[#0066cc] uppercase bg-blue-50 px-3 py-1 rounded-full border border-blue-100">专题专区</span>
+                        <h2 class="text-4xl font-black text-neutral-900 tracking-tight">
+                            {{ filterCategory }}
+                        </h2>
+                        <p class="text-sm text-neutral-500 leading-relaxed font-normal">
+                            <!-- 根据不同分类展示不同的诗意副标题，彰显格调 -->
+                            <span v-if="filterCategory === '玄幻'">天道无常，代码证道。触碰未知世界的法则，编排灵气，运行乾坤。</span>
+                            <span v-else-if="filterCategory === '都市'">在喧嚣与霓虹之间，用最冷静的逻辑与敏锐的重构思维，书写现代都市的非凡传奇。</span>
+                            <span v-else-if="filterCategory === '科幻'">跃迁于宏伟群星，用极致的分布式微服务编排整片繁星宇宙。</span>
+                            <span v-else-if="filterCategory === '历史'">重演千古大局，每一行代码的推演，皆是宏图帝国的命脉演进。</span>
+                            <span v-else>精彩品类，精心甄选。为您汇聚当前类型最优质的创作精品。</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 分类书籍网格 -->
+                <div class="space-y-6">
+                    <h3 class="text-lg font-bold text-neutral-900 tracking-tight">为您精选的《{{ filterCategory }}》书籍</h3>
+                    
+                    <div v-if="filteredBooks.length === 0" class="text-center py-16 bg-white rounded-3xl border border-neutral-200/30 text-neutral-400 text-xs font-medium">
+                        当前分类暂无精品小说
+                    </div>
+
+                    <div v-else class="grid grid-cols-2 md:grid-cols-3 gap-8">
+                        <div v-for="book in filteredBooks" :key="book.id" class="group bg-white border border-neutral-200/40 rounded-[24px] p-5 apple-card-shadow apple-transition cursor-pointer flex flex-col justify-between" @click="viewBookDetail(book.id)">
+                            <div>
+                                <div class="w-full h-44 rounded-2xl bg-gradient-to-br from-neutral-50 to-neutral-200/60 mb-5 relative overflow-hidden border border-neutral-200/20 group-hover:scale-[1.01] apple-transition flex items-center justify-center p-4">
+                                    <div class="absolute inset-y-0 left-0 w-full book-spine-effect"></div>
+                                    <div class="text-center relative z-10 px-2 space-y-2">
+                                        <span class="text-base font-extrabold text-neutral-900 tracking-tight line-clamp-2 px-2">{{ book.title }}</span>
+                                        <div class="w-6 h-0.5 bg-neutral-400 mx-auto"></div>
+                                        <span class="text-[11px] text-neutral-400 font-bold block">{{ book.author }}</span>
+                                    </div>
+                                </div>
+                                <h4 class="font-extrabold text-sm text-neutral-900 line-clamp-1 group-hover:text-[#0066cc] apple-transition">{{ book.title }}</h4>
+                                <p class="text-xs text-neutral-400 mt-1 font-medium">由 {{ book.author }} 撰写</p>
+                            </div>
+                            <div class="mt-5 pt-4 border-t border-neutral-100 flex justify-between items-center text-[10px] text-neutral-400 font-bold tracking-tight">
+                                <span class="flex items-center"><span class="mr-1">👁️</span> {{ book.views }} 热度</span>
+                                <span class="bg-neutral-100 text-neutral-600 px-3 py-1 rounded-full border border-neutral-200/20">{{ book.category }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: 书籍详情 -->
+            <div v-if="currentView === 'detail' && selectedBook" class="space-y-12 animate-apple-spring">
+                <!-- 返回按钮 -->
+                <button @click="goBack" class="flex items-center text-xs font-bold text-neutral-500 hover:text-neutral-950 apple-transition">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                    返回
+                </button>
+
+                <!-- 书籍信息 -->
+                <div class="flex flex-col md:flex-row gap-10 items-start pb-10 border-b border-neutral-200/60">
+                    <div class="w-36 h-48 bg-gradient-to-br from-neutral-50 to-neutral-100 rounded-[24px] flex flex-col justify-center items-center text-center p-4 border border-neutral-200 shadow-lg relative overflow-hidden flex-shrink-0">
+                        <div class="absolute inset-y-0 left-0 w-full book-spine-effect"></div>
+                        <span class="text-sm font-extrabold text-neutral-800 leading-snug line-clamp-4 relative z-10 px-1">{{ selectedBook.title }}</span>
+                        <span class="text-[10px] text-neutral-400 mt-3 font-bold relative z-10 block">{{ selectedBook.author }}</span>
+                    </div>
+                    
+                    <div class="space-y-5 flex-1">
+                        <div class="flex items-center gap-3">
+                            <h2 class="text-3xl md:text-4xl font-extrabold text-neutral-900 tracking-tight leading-tight">{{ selectedBook.title }}</h2>
+                            <!-- 管理员专属编辑入口 -->
+                            <button v-if="isAdmin" @click="openEditBookModal" class="bg-amber-100 hover:bg-amber-200 text-amber-800 text-[11px] px-3 py-1.5 rounded-full apple-transition font-bold flex items-center gap-1">
+                                ✏️ 编辑信息
+                            </button>
+                        </div>
+                        <p class="text-sm text-neutral-500 font-medium">由 <span class="font-bold text-neutral-800">{{ selectedBook.author }}</span> 著作</p>
+                        
+                        <div class="flex space-x-2 text-[10px] font-bold tracking-tight">
+                            <span class="bg-neutral-200/60 text-neutral-700 px-3 py-1 rounded-full cursor-pointer hover:bg-neutral-300/60 apple-transition" @click="viewCategoryDetail(selectedBook.category)">{{ selectedBook.category }}</span>
+                            <span class="bg-neutral-100 text-neutral-500 px-3 py-1 rounded-full">👁️ {{ selectedBook.views }} 浏览量</span>
+                            <span class="bg-blue-50 text-[#0066cc] px-3 py-1 rounded-full border border-blue-100">👍 {{ selectedBook.likes }} 赞同</span>
+                        </div>
+                        
+                        <div class="pt-4 flex flex-wrap gap-3">
+                            <button @click="startReading(selectedBook.id)" class="bg-[#0066cc] hover:bg-[#0077ed] text-white text-xs px-8 py-3 rounded-full apple-transition font-bold shadow-sm">
+                                立即阅读
+                            </button>
+                            <button v-if="isInBookshelf(selectedBook.id)" @click="removeFromBookshelf(selectedBook.id)" class="border border-rose-200 text-rose-500 text-xs px-6 py-3 rounded-full hover:bg-rose-50/50 apple-transition font-bold">
+                                移出书架
+                            </button>
+                            <button v-else @click="addToBookshelf(selectedBook.id)" class="border border-neutral-300 text-neutral-800 text-xs px-6 py-3 rounded-full hover:bg-neutral-50 apple-transition font-bold">
+                                加入书架
+                            </button>
+                            <button @click="likeBook(selectedBook.id)" class="bg-neutral-200/50 hover:bg-neutral-200 text-neutral-800 text-xs px-5 py-3 rounded-full apple-transition font-bold">
+                                👍 点赞推荐
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 章节目录 -->
+                <div class="space-y-5">
+                    <h3 class="text-lg font-bold text-neutral-900 tracking-tight">正文目录（共 {{ bookChapters.length }} 章）</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div v-for="chapter in bookChapters" :key="chapter.id" @click="readChapter(chapter)" class="p-5 border border-neutral-200/50 bg-white rounded-2xl hover:border-neutral-400 apple-transition cursor-pointer text-sm flex justify-between items-center">
+                            <span class="font-bold text-neutral-800">第 {{ chapter.chapter_num }} 章：{{ chapter.title }}</span>
+                            <span class="text-xs text-[#0066cc] font-semibold">阅读 &gt;</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 评论区 -->
+                <div class="space-y-6">
+                    <h3 class="text-lg font-bold text-neutral-900 tracking-tight">读者点评</h3>
+                    
+                    <!-- 新增评论输入 -->
+                    <div class="bg-white rounded-3xl p-6 border border-neutral-200/40 space-y-4 shadow-sm">
+                        <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-wider">留下您的客观评价</h4>
+                        <textarea v-model="newCommentContent" rows="3" class="w-full text-sm p-4 border border-neutral-200 rounded-2xl focus:ring-1 focus:ring-neutral-900 focus:outline-none bg-neutral-50/30 focus:bg-white apple-transition" placeholder="写下您的真实阅读心得..."></textarea>
+                        <div class="flex justify-end">
+                            <button @click="submitComment" class="bg-neutral-900 text-white text-xs px-6 py-2.5 rounded-full hover:bg-neutral-800 apple-transition font-bold shadow-sm">提交点评</button>
+                        </div>
+                    </div>
+
+                    <!-- 评论条目 -->
+                    <div v-if="bookComments.length === 0" class="text-center py-10 text-xs text-neutral-400 font-medium bg-white rounded-3xl border border-neutral-200/30">
+                        暂无点评，欢迎抢写首篇
+                    </div>
+                    <div v-else class="space-y-4">
+                        <div v-for="comment in bookComments" :key="comment.id" class="p-5 bg-white border border-neutral-200/40 rounded-2xl space-y-2">
+                            <div class="flex justify-between text-xs text-neutral-400 font-medium">
+                                <span class="font-bold text-neutral-800">{{ comment.username }}</span>
+                                <span>{{ comment.created_at }}</span>
+                            </div>
+                            <p class="text-xs text-neutral-600 leading-relaxed font-normal">{{ comment.content }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: 沉浸式阅读器 -->
+            <div v-if="currentView === 'reader' && activeChapter" class="space-y-10 animate-apple-spring">
+                <!-- 顶部悬浮工具栏 (磨砂玻璃面板) -->
+                <div class="flex justify-between items-center pb-4 border-b border-neutral-200/60 sticky top-12 bg-white/95 backdrop-blur-md z-30 py-3">
+                    <div class="flex items-center space-x-3">
+                        <button @click="exitReader" class="flex items-center text-xs font-bold text-neutral-500 hover:text-neutral-950">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                            退出阅读
+                        </button>
+                        
+                        <!-- 当是管理员且没有在编辑时：显示行内编辑按钮 -->
+                        <button v-if="isAdmin && !isEditingChapter" @click="startInlineEditChapter" class="bg-amber-100 hover:bg-amber-200 text-amber-800 text-[10px] px-2.5 py-1 rounded-full apple-transition font-bold flex items-center gap-1">
+                            ✏️ 原地编辑正文
+                        </button>
+                        
+                        <!-- 当在行内编辑状态时：显示保存/取消按钮 -->
+                        <div v-if="isEditingChapter" class="flex items-center space-x-1.5 animate-apple-spring">
+                            <button @click="saveInlineEditChapter" class="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-3 py-1 rounded-full apple-transition font-bold flex items-center gap-1 shadow-sm">
+                                💾 保存正文
+                            </button>
+                            <button @click="cancelInlineEditChapter" class="bg-neutral-200 hover:bg-neutral-300 text-neutral-700 text-[10px] px-3 py-1 rounded-full apple-transition font-bold">
+                                取消
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 风格控制 -->
+                    <div class="flex items-center space-x-4">
+                        <!-- 字体大/小 -->
+                        <div class="flex items-center space-x-1 bg-neutral-100 rounded-xl p-0.5 text-xs border border-neutral-200/20">
+                            <button @click="changeFontSize(-2)" class="px-3 py-1.5 hover:bg-white rounded-lg font-bold text-neutral-600 apple-transition">A-</button>
+                            <span class="px-3 font-bold text-neutral-800 min-w-[40px] text-center">{{ readerConfig.fontSize }}px</span>
+                            <button @click="changeFontSize(2)" class="px-3 py-1.5 hover:bg-white rounded-lg font-bold text-neutral-600 apple-transition">A+</button>
+                        </div>
+                        <!-- 主题选择 -->
+                        <div class="flex space-x-2 bg-neutral-100 p-1 rounded-full border border-neutral-200/20">
+                            <button @click="readerConfig.theme = 'light'" class="w-5 h-5 rounded-full border border-neutral-300 bg-white shadow-sm" title="经典白"></button>
+                            <button @click="readerConfig.theme = 'sepia'" class="w-5 h-5 rounded-full border border-neutral-300 bg-[#f4ecd8] shadow-sm" title="羊皮纸"></button>
+                            <button @click="readerConfig.theme = 'green'" class="w-5 h-5 rounded-full border border-neutral-300 bg-[#e3eedb] shadow-sm" title="绿意沙"></button>
+                            <button @click="readerConfig.theme = 'dark'" class="w-5 h-5 rounded-full border border-neutral-300 bg-[#121212] shadow-sm" title="暗夜"></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 阅读正文区 (非编辑状态) -->
+                <div v-if="!isEditingChapter" :class="'theme-' + readerConfig.theme" class="p-8 md:p-16 rounded-[32px] shadow-sm min-h-[500px] apple-transition border border-neutral-200/20">
+                    <h2 class="text-3xl font-extrabold mb-10 text-center border-b border-dashed pb-6 border-neutral-300/30 tracking-tight leading-snug">
+                        第 {{ activeChapter.chapter_num }} 章：{{ activeChapter.title }}
+                    </h2>
+                    <!-- 黄金行宽排版 -->
+                    <div class="leading-loose whitespace-pre-wrap select-text transition-all duration-300 max-w-2xl mx-auto font-normal tracking-wide" :style="{ fontSize: readerConfig.fontSize + 'px' }">
+                        {{ activeChapter.content }}
+                    </div>
+                </div>
+
+                <!-- 阅读正文区 (管理员行内原地无缝编辑状态) -->
+                <div v-else :class="'theme-' + readerConfig.theme" class="p-8 md:p-16 rounded-[32px] shadow-sm min-h-[500px] apple-transition border border-neutral-200/20">
+                    <div class="max-w-2xl mx-auto space-y-6">
+                        <!-- 原地编辑章节名 -->
+                        <div class="flex items-center space-x-2 border-b border-dashed pb-5 border-current/20">
+                            <span class="text-xl font-bold shrink-0">第 {{ activeChapter.chapter_num }} 章：</span>
+                            <input v-model="editChapterForm.title" type="text" 
+                                   class="bg-transparent text-xl font-extrabold focus:outline-none w-full border-b border-transparent focus:border-current/40 pb-1" 
+                                   placeholder="编辑章节标题...">
+                        </div>
+                        <!-- 原地编辑章节正文：完全共享阅读器的主题样式、行高与字体大小 -->
+                        <div class="relative">
+                            <textarea v-model="editChapterForm.content" rows="18" 
+                                      class="bg-transparent w-full focus:outline-none resize-y leading-loose tracking-wide transition-all duration-300 border border-dashed border-current/20 rounded-2xl p-4 focus:border-current/40 focus:ring-0" 
+                                      :style="{ fontSize: readerConfig.fontSize + 'px' }"
+                                      placeholder="在此写入章节正文内容..."></textarea>
+                            <div class="absolute bottom-3 right-4 text-[10px] text-current/40 pointer-events-none select-none font-semibold">
+                                ✍️ 管理员原地编辑模式
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 下方跨章节控制栏 -->
+                <div class="flex justify-between items-center pt-4 select-none">
+                    <button @click="prevChapter" :disabled="!hasPrevChapter" class="text-xs bg-white border border-neutral-200 text-neutral-700 px-6 py-3 rounded-full hover:bg-neutral-50 disabled:opacity-40 disabled:hover:bg-white transition font-bold shadow-sm">
+                        上一章节
+                    </button>
+                    <span class="text-xs text-neutral-400 font-bold tracking-widest">第 {{ activeChapter.chapter_num }} 章</span>
+                    <button @click="nextChapter" :disabled="!hasNextChapter" class="text-xs bg-neutral-900 text-white px-6 py-3 rounded-full hover:bg-neutral-800 disabled:opacity-40 disabled:hover:bg-neutral-900 transition font-bold shadow-sm">
+                        下一章节
+                    </button>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- 移动端苹果经典悬浮底栏导航 -->
+        <footer class="md:hidden fixed bottom-6 left-6 right-6 bg-white/95 backdrop-blur-xl border border-neutral-200/40 flex justify-around py-3 z-40 rounded-3xl shadow-[0_16px_50px_rgba(0,0,0,0.08)]">
+            <button @click="switchView('home')" class="flex flex-col items-center space-y-1 text-neutral-400" :class="currentView === 'home' ? 'text-neutral-900' : ''">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                <span class="text-[9px] font-bold">书城</span>
+            </button>
+            <button @click="switchView('bookshelf')" class="flex flex-col items-center space-y-1 text-neutral-400" :class="currentView === 'bookshelf' ? 'text-neutral-900' : ''">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                <span class="text-[9px] font-bold">书架</span>
+            </button>
+            <button @click="switchView('rank')" class="flex flex-col items-center space-y-1 text-neutral-400" :class="currentView === 'rank' ? 'text-neutral-900' : ''">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                <span class="text-[9px] font-bold">排行</span>
+            </button>
+            <button @click="switchView('category')" class="flex flex-col items-center space-y-1 text-neutral-400" :class="currentView === 'category' || currentView === 'categoryDetail' ? 'text-neutral-900' : ''">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/></svg>
+                <span class="text-[9px] font-bold">分类</span>
+            </button>
+        </footer>
+
+        <!-- iPadOS 级极简登录/注册弹窗 -->
+        <div v-if="showLoginModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/25 backdrop-blur-sm">
+            <div class="bg-white rounded-[28px] max-w-sm w-full p-6 space-y-6 shadow-2xl border border-neutral-200/50 animate-apple-spring">
+                <div class="flex justify-between items-center border-b border-neutral-100 pb-3">
+                    <h3 class="text-base font-extrabold text-neutral-900">{{ authTab === 'login' ? '快捷登录演示' : '创建简阅账户' }}</h3>
+                    <button @click="showLoginModal = false" class="text-neutral-400 hover:text-neutral-600 text-xl font-light">&times;</button>
+                </div>
+                <!-- 预设账号填充助手 -->
+                <div v-if="authTab === 'login'" class="bg-[#f5f5f7] p-3.5 rounded-2xl border border-neutral-200/50 text-[10px] space-y-2">
+                    <p class="font-extrabold text-neutral-800 flex items-center"><span class="mr-1">💡</span> 极简角色登录切换：</p>
+                    <div class="flex gap-2 flex-wrap">
+                        <button @click="quickFill('admin', '123456')" class="bg-amber-500 text-white px-3 py-1.5 rounded-lg hover:bg-amber-600 font-bold shadow-sm apple-transition">管理员 admin (全特权)</button>
+                        <button @click="quickFill('user1', '123456')" class="bg-[#0066cc] text-white px-3 py-1.5 rounded-lg hover:bg-[#0077ed] font-bold shadow-sm apple-transition">普通用户 user1 (只读)</button>
+                    </div>
+                </div>
+
+                <div class="space-y-4 text-xs">
+                    <div class="space-y-1.5">
+                        <label class="block font-bold text-neutral-500">用户名</label>
+                        <input v-model="authForm.username" type="text" class="w-full text-xs p-3.5 border border-neutral-200 rounded-xl focus:outline-none focus:border-neutral-900 bg-neutral-50/50 focus:bg-white" placeholder="请输入用户名">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="block font-bold text-neutral-500">密码</label>
+                        <input v-model="authForm.password" type="password" class="w-full text-xs p-3.5 border border-neutral-200 rounded-xl focus:outline-none focus:border-neutral-900 bg-neutral-50/50 focus:bg-white" placeholder="请输入密码">
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <button v-if="authTab === 'login'" @click="handleLogin" class="w-full bg-[#1c1c1e] text-white text-xs py-3.5 rounded-full hover:bg-black apple-transition font-bold shadow-md">继续登录</button>
+                    <button v-else @click="handleRegister" class="w-full bg-[#1c1c1e] text-white text-xs py-3.5 rounded-full hover:bg-black apple-transition font-bold shadow-md">提交注册</button>
+                    
+                    <div class="text-center pt-2">
+                        <button @click="authTab = authTab === 'login' ? 'register' : 'login'" class="text-xs text-[#0066cc] hover:underline font-semibold">
+                            {{ authTab === 'login' ? '还没有账号？点击创建新账号' : '已有账号？点击登录' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 苹果卡片式【发布新小说与分类管理】双功能弹窗 -->
+        <div v-if="showAdminModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/25 backdrop-blur-sm">
+            <div class="bg-white rounded-[28px] max-w-lg w-full p-6 space-y-6 shadow-2xl border border-neutral-200/50 max-h-[90vh] overflow-y-auto animate-apple-spring">
+                <div class="flex justify-between items-center border-b border-neutral-100 pb-3">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-base">⚙️</span>
+                        <h3 class="text-base font-extrabold text-neutral-900">简阅中心控制台</h3>
+                    </div>
+                    <button @click="showAdminModal = false" class="text-neutral-400 hover:text-neutral-600 text-xl font-light">&times;</button>
+                </div>
+
+                <!-- 分段选择器控制：新书发布 or 分类配置 -->
+                <div class="flex bg-neutral-100 p-1 rounded-xl">
+                    <button @click="adminModalTab = 'publish'" :class="adminModalTab === 'publish' ? 'bg-white text-neutral-950 font-bold shadow-sm' : 'text-neutral-500'" class="flex-1 py-1.5 rounded-lg text-xs apple-transition">
+                        📚 上架新小说
+                    </button>
+                    <button @click="adminModalTab = 'categories'" :class="adminModalTab === 'categories' ? 'bg-white text-neutral-950 font-bold shadow-sm' : 'text-neutral-500'" class="flex-1 py-1.5 rounded-lg text-xs apple-transition">
+                        🏷️ 栏目分类管理
+                    </button>
+                </div>
+
+                <!-- TAB 1: 上架新小说 -->
+                <div v-if="adminModalTab === 'publish'" class="space-y-4 text-xs">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="space-y-1.5">
+                            <label class="block font-bold text-neutral-500">小说名称</label>
+                            <input v-model="adminForm.title" type="text" class="w-full p-3.5 border border-neutral-200 rounded-xl focus:outline-none focus:border-neutral-950 bg-[#f5f5f7]" placeholder="例如：容器云架构指南">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="block font-bold text-neutral-500">小说作者</label>
+                            <input v-model="adminForm.author" type="text" class="w-full p-3.5 border border-neutral-200 rounded-xl focus:outline-none focus:border-neutral-950 bg-[#f5f5f7]" placeholder="例如：Docker 大帝">
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block font-bold text-neutral-500">小说品类</label>
+                        <select v-model="adminForm.category" class="w-full p-3.5 border border-neutral-200 rounded-xl focus:outline-none focus:border-neutral-950 bg-white">
+                            <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+                        </select>
+                    </div>
+
+                    <div class="border-t border-neutral-100 pt-4 space-y-3">
+                        <h4 class="text-xs font-bold text-neutral-900 uppercase tracking-wide">📢 顺便发布第一章节内容</h4>
+                        <div class="space-y-4">
+                            <div class="space-y-1.5">
+                                <label class="block font-bold text-neutral-500">章节标题</label>
+                                <input v-model="adminForm.chapterTitle" type="text" class="w-full p-3.5 border border-neutral-200 rounded-xl focus:outline-none focus:border-neutral-950 bg-[#f5f5f7]" placeholder="例如：第一章 宿命的镜像编译">
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="block font-bold text-neutral-500">章节正文</label>
+                                <textarea v-model="adminForm.chapterContent" rows="4" class="w-full p-3.5 border border-neutral-200 rounded-xl focus:outline-none focus:border-neutral-950 bg-[#f5f5f7]" placeholder="在此写入或粘贴第一章正文..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex justify-end space-x-2.5">
+                        <button @click="showAdminModal = false" class="bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-xs px-5 py-2.5 rounded-full transition font-bold">取消</button>
+                        <button @click="handlePublishBook" class="bg-[#0066cc] hover:bg-[#0077ed] text-white text-xs px-6 py-2.5 rounded-full transition font-bold shadow-sm">发布并上线</button>
+                    </div>
+                </div>
+
+                <!-- TAB 2: 分类栏目管理 -->
+                <div v-if="adminModalTab === 'categories'" class="space-y-5 text-xs">
+                    <div class="space-y-2">
+                        <label class="block font-bold text-neutral-500">新增栏目</label>
+                        <div class="flex gap-2">
+                            <input v-model="newCategoryName" type="text" class="flex-grow p-3.5 border border-neutral-200 rounded-xl focus:outline-none focus:border-neutral-950 bg-[#f5f5f7]" placeholder="键入全新栏目分类名称...">
+                            <button @click="handleAddCategory" class="bg-neutral-900 text-white text-xs px-6 py-3.5 rounded-xl hover:bg-black font-bold apple-transition shrink-0 shadow-sm">添加分类</button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 pt-2">
+                        <label class="block font-bold text-neutral-500">已有分类（点击“&times;”即可彻底移除该版块）</label>
+                        <div class="flex flex-wrap gap-2.5 p-4 bg-[#f5f5f7] rounded-2xl border border-neutral-200/40">
+                            <span v-for="cat in categories" :key="cat" class="bg-white text-neutral-800 px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-neutral-200 shadow-sm">
+                                <span>{{ cat }}</span>
+                                <button @click="handleDeleteCategory(cat)" class="text-neutral-400 hover:text-rose-500 font-extrabold text-sm ml-1 select-none focus:outline-none" title="移除此分类">&times;</button>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 苹果卡片式【编辑书籍基本属性】弹窗 -->
+            <div v-if="showEditBookModal && selectedBook" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/25 backdrop-blur-sm">
+                <div class="bg-white rounded-[28px] max-w-sm w-full p-6 space-y-6 shadow-2xl border border-neutral-200/50 animate-apple-spring">
+                    <div class="flex justify-between items-center border-b border-neutral-100 pb-3">
+                        <h3 class="text-base font-extrabold text-neutral-900">✏️ 修改小说基本信息</h3>
+                        <button @click="showEditBookModal = false" class="text-neutral-400 hover:text-neutral-600 text-xl font-light">&times;</button>
+                    </div>
+
+                    <div class="space-y-4 text-xs">
+                        <div class="space-y-1.5">
+                            <label class="block font-bold text-neutral-500">书名</label>
+                            <input v-model="editBookForm.title" type="text" class="w-full text-xs p-3.5 border border-neutral-200 rounded-xl focus:outline-none focus:border-neutral-950 bg-[#f5f5f7]" placeholder="更改书名">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="block font-bold text-neutral-500">作者</label>
+                            <input v-model="editBookForm.author" type="text" class="w-full text-xs p-3.5 border border-neutral-200 rounded-xl focus:outline-none focus:border-neutral-950 bg-[#f5f5f7]" placeholder="更改作者">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="block font-bold text-neutral-500">分类</label>
+                            <select v-model="editBookForm.category" class="w-full p-3.5 border border-neutral-200 rounded-xl focus:outline-none focus:border-neutral-950 bg-white">
+                                <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex justify-end space-x-2.5">
+                        <button @click="showEditBookModal = false" class="bg-neutral-100 text-neutral-600 text-xs px-5 py-2.5 rounded-full transition font-bold">取消</button>
+                        <button @click="handleUpdateBook" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-6 py-2.5 rounded-full transition font-bold shadow-sm">保存修改</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+
+        // ==========================================
+        // 配置项：如果需要联调 FastAPI 后端，请将 USE_MOCK 改为 false 
+        // ==========================================
+        const USE_MOCK = false; 
+        const API_BASE_URL = "http://127.0.0.1:8000/api"; 
+
+        createApp({
+            setup() {
+                // 当前激活的视图: home, bookshelf, rank, category, categoryDetail, detail, reader
+                const currentView = ref('home');
+                const previousView = ref('home'); 
+                const categories = ref(['玄幻', '都市', '科幻', '历史']);
+                const filterCategory = ref('全部');
+
+                // 辅助状态管理
+                const toast = ref({ show: false, message: '', type: 'success' });
+                const showLoginModal = ref(false);
+                const showAdminModal = ref(false); 
+                const adminModalTab = ref('publish'); // 控制面板子选项卡：publish(发布新书) / categories(管理分类)
+                const authTab = ref('login'); 
+                const authForm = ref({ username: '', password: '' });
+
+                // 新增分类控制
+                const newCategoryName = ref('');
+
+                // 编辑书籍控制
+                const showEditBookModal = ref(false);
+                const editBookForm = ref({ id: null, title: '', author: '', category: '' });
+
+                // 【全新重构】原地无缝行内编辑控制
+                const isEditingChapter = ref(false);
+                const editChapterForm = ref({ id: null, title: '', content: '' });
+
+                // 发布书籍初始表单绑定
+                const adminForm = ref({
+                    title: '',
+                    author: '',
+                    category: '玄幻',
+                    chapterTitle: '',
+                    chapterContent: ''
+                });
+
+                // 核心业务数据 (完美映射你规定的 5 张表)
+                const currentUser = ref(null); 
+                const books = ref([]); 
+                const chapters = ref([]); 
+                const bookshelf = ref([]); 
+                const comments = ref([]); 
+
+                // 选中态暂存
+                const selectedBook = ref(null);
+                const activeChapter = ref(null);
+                const newCommentContent = ref('');
+
+                // 苹果阅读器默认设置
+                const readerConfig = ref({
+                    fontSize: 18,
+                    theme: 'sepia' 
+                });
+
+                // ==========================================
+                // 模拟初始数据库数据 (USE_MOCK = true 时默认加载)
+                // ==========================================
+                const mockUsers = [
+                    { id: 1, username: 'admin', password: '123456' },
+                    { id: 2, username: 'user1', password: '123456' }
+                ];
+
+                const mockBooks = [
+                    { id: 1, title: '修仙从极简代码开始', author: '无bug尊者', category: '玄幻', views: 8848, likes: 231, is_daily_rec: true },
+                    { id: 2, title: '重回1998：我是系统架构师', author: '键盘极客', category: '都市', views: 5621, likes: 119, is_daily_rec: false },
+                    { id: 3, title: '银河战纪：全栈大帝', author: 'Docker船长', category: '科幻', views: 12053, likes: 541, is_daily_rec: false },
+                    { id: 4, title: '大唐：我的代码能推演国运', author: '极简刺客', category: '历史', views: 3342, likes: 88, is_daily_rec: false }
+                ];
+
+                const mockChapters = [
+                    { id: 1, book_id: 1, chapter_num: 1, title: '练气期：配置环境', content: '    林凡睁开眼，发现自己穿越到了修仙界。这个世界的灵气居然是按字节流传输的。\n    “天之道，损有余而补不足，配置好镜像源，成帝之路便开始了一半。”他默念祖传的极简筑基口诀：\n    docker-compose up -d --build\n    顷刻间，天空五彩祥云凝聚，筑基异象骤起！' },
+                    { id: 2, book_id: 1, chapter_num: 2, title: '筑基期：打包运行', content: '    只消数息，林凡成功开辟丹田内网。由于没有多余的冗余依赖，他的法力之纯净世所罕见。\n    突然，不远处走来一位筑基期的守山弟子，高傲地喝道：“来者何人，竟敢在主峰地界私设对外端口？”\n    林凡面色沉静，反手扔出一份多阶段构建的 Dockerfile。' },
+                    { id: 3, book_id: 2, chapter_num: 1, title: '重生之夜的电脑微光', content: '    1998年。林雨醒来，四周是散落的软盘和厚重的台式显示器。\n    “我真的重生了。”他看着手底尚未干涸的软盘，下定决心要用极简架构改变二十年后的互联网。' },
+                    { id: 4, book_id: 3, chapter_num: 1, title: '机械降神：终极编排', content: '    太空母舰的控制室亮起刺眼的红灯。\n    全栈帝国的边缘防线被宇宙异能侵袭，“用极致的分布式逻辑，把火力容器化！”大帝咆哮着下达命令。' }
+                ];
+
+                const mockBookshelf = [
+                    { id: 1, user_id: 1, book_id: 1 },
+                    { id: 2, user_id: 1, book_id: 3 }
+                ];
+
+                const mockComments = [
+                    { id: 1, user_id: 1, username: 'admin', book_id: 1, content: '实训必看！极简主义深得我心，Docker部署一次就跑通了！', created_at: '2026-05-20 10:11' },
+                    { id: 2, user_id: 2, username: 'user1', book_id: 1, content: '太真实了，原来神仙修仙也要配置镜像源。', created_at: '2026-05-21 14:22' }
+                ];
+
+                // ==========================================
+                // 基础公用方法与断言鉴权逻辑
+                // ==========================================
+                const showToast = (message, type = 'success') => {
+                    toast.value.show = true;
+                    toast.value.message = message;
+                    toast.value.type = type;
+                    setTimeout(() => {
+                        toast.value.show = false;
+                    }, 3000);
+                };
+
+                const switchView = (viewName) => {
+                    previousView.value = currentView.value;
+                    currentView.value = viewName;
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                };
+
+                const goBack = () => {
+                    switchView(previousView.value);
+                };
+
+                const quickFill = (username, password) => {
+                    authForm.value.username = username;
+                    authForm.value.password = password;
+                };
+
+                // 核心：管理员鉴权计算属性
+                const isAdmin = computed(() => {
+                    return currentUser.value && currentUser.value.username === 'admin';
+                });
+
+                // 进入指定的分类精选详情页面
+                const viewCategoryDetail = (catName) => {
+                    filterCategory.value = catName;
+                    switchView('categoryDetail');
+                };
+
+                // 计算属性绑定
+                const dailyRecBook = computed(() => {
+                    return books.value.find(b => b.is_daily_rec) || books.value[0];
+                });
+
+                const filteredBooks = computed(() => {
+                    if (filterCategory.value === '全部') return books.value;
+                    return books.value.filter(b => b.category === filterCategory.value);
+                });
+
+                const bookshelfBooks = computed(() => {
+                    if (!currentUser.value) return [];
+                    const userBookIds = bookshelf.value
+                        .filter(item => item.user_id === currentUser.value.id)
+                        .map(item => item.book_id);
+                    return books.value.filter(b => userBookIds.includes(b.id));
+                });
+
+                const rankByViews = computed(() => {
+                    return [...books.value].sort((a, b) => b.views - a.views);
+                });
+
+                const rankByLikes = computed(() => {
+                    return [...books.value].sort((a, b) => b.likes - a.likes);
+                });
+
+                const bookChapters = computed(() => {
+                    if (!selectedBook.value) return [];
+                    return chapters.value
+                        .filter(c => c.book_id === selectedBook.value.id)
+                        .sort((a, b) => a.chapter_num - b.chapter_num);
+                });
+
+                const bookComments = computed(() => {
+                    if (!selectedBook.value) return [];
+                    return comments.value
+                        .filter(c => c.book_id === selectedBook.value.id)
+                        .sort((a, b) => b.id - a.id);
+                });
+
+                const hasPrevChapter = computed(() => {
+                    if (!activeChapter.value) return false;
+                    return bookChapters.value.some(c => c.chapter_num === activeChapter.value.chapter_num - 1);
+                });
+
+                const hasNextChapter = computed(() => {
+                    if (!activeChapter.value) return false;
+                    return bookChapters.value.some(c => c.chapter_num === activeChapter.value.chapter_num + 1);
+                });
+
+                // ==========================================
+                // 业务动作实现（管理员全局特权逻辑）
+                // ==========================================
+
+                // 1. 管理员操作：增加分类栏目
+                const handleAddCategory = async () => {
+                    if (!isAdmin.value) {
+                        showToast("无权操作！只有管理员 admin 才能管理分类栏目", "error");
+                        return;
+                    }
+
+                    const rawName = newCategoryName.value.trim();
+                    if (!rawName) {
+                        showToast("分类名称不能为空", "error");
+                        return;
+                    }
+                    if (categories.value.includes(rawName)) {
+                        showToast("该分类已存在，不能重复添加", "error");
+                        return;
+                    }
+
+                    if (USE_MOCK) {
+                        categories.value.push(rawName);
+                        newCategoryName.value = '';
+                        showToast(`成功新增分类栏目: ${rawName}`);
+                    } else {
+                        try {
+                            const res = await fetch(`${API_BASE_URL}/categories`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name: rawName })
+                            });
+                            if (res.ok) {
+                                categories.value.push(rawName);
+                                newCategoryName.value = '';
+                                showToast(`后端同步新增分类成功: ${rawName}`);
+                            }
+                        } catch (err) {
+                            showToast("API 新增分类请求失败", "error");
+                        }
+                    }
+                };
+
+                // 2. 管理员操作：彻底移除分类栏目
+                const handleDeleteCategory = async (catName) => {
+                    if (!isAdmin.value) {
+                        showToast("无权操作！只有管理员 admin 才能管理分类栏目", "error");
+                        return;
+                    }
+
+                    if (USE_MOCK) {
+                        categories.value = categories.value.filter(c => c !== catName);
+                        showToast(`已移除分类栏目: ${catName}`);
+                    } else {
+                        try {
+                            const res = await fetch(`${API_BASE_URL}/categories/${catName}`, {
+                                method: 'DELETE'
+                            });
+                            if (res.ok) {
+                                categories.value = categories.value.filter(c => c !== catName);
+                                showToast(`后端同步删除分类成功: ${catName}`);
+                            }
+                        } catch (err) {
+                            showToast("API 移除分类请求失败", "error");
+                        }
+                    }
+                };
+
+                // 3. 管理员操作：修改已有小说基本信息
+                const openEditBookModal = () => {
+                    if (!isAdmin.value) {
+                        showToast("无权操作！只有管理员 admin 能够修改小说属性", "error");
+                        return;
+                    }
+                    editBookForm.value = {
+                        id: selectedBook.value.id,
+                        title: selectedBook.value.title,
+                        author: selectedBook.value.author,
+                        category: selectedBook.value.category
+                    };
+                    showEditBookModal.value = true;
+                };
+
+                const handleUpdateBook = async () => {
+                    if (!isAdmin.value) {
+                        showToast("非法操作拦截！", "error");
+                        return;
+                    }
+                    const { id, title, author, category } = editBookForm.value;
+                    if (!title.trim() || !author.trim()) {
+                        showToast("书名及作者字段不能为空", "error");
+                        return;
+                    }
+
+                    if (USE_MOCK) {
+                        const target = books.value.find(b => b.id === id);
+                        if (target) {
+                            target.title = title.trim();
+                            target.author = author.trim();
+                            target.category = category;
+                            selectedBook.value = { ...target };
+                        }
+                        showEditBookModal.value = false;
+                        showToast("修改小说基本信息成功");
+                    } else {
+                        try {
+                            const res = await fetch(`${API_BASE_URL}/books/${id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ title, author, category })
+                            });
+                            if (res.ok) {
+                                const updated = await res.json();
+                                const index = books.value.findIndex(b => b.id === id);
+                                if (index !== -1) books.value[index] = updated;
+                                selectedBook.value = updated;
+                                showEditBookModal.value = false;
+                                showToast("服务端数据同步成功！");
+                            }
+                        } catch (err) {
+                            showToast("修改小说信息 API 请求异常", "error");
+                        }
+                    }
+                };
+
+                // 【全新原地行内编辑】4. 开启行内正文编辑模式 (直接在当前页面改)
+                const startInlineEditChapter = () => {
+                    if (!isAdmin.value) {
+                        showToast("无权操作！只有管理员 admin 能够修改章节内容", "error");
+                        return;
+                    }
+                    const chapterData = activeChapter.value || {};
+                    editChapterForm.value = {
+                        id: chapterData.id || null,
+                        title: chapterData.title || '',
+                        content: chapterData.content || ''
+                    };
+                    isEditingChapter.value = true;
+                    showToast("进入行内编辑，可以直接在当前页面修改文字了");
+                };
+
+                // 【全新原地行内编辑】5. 退出行内正文编辑模式
+                const cancelInlineEditChapter = () => {
+                    isEditingChapter.value = false;
+                    showToast("已取消本次编辑");
+                };
+
+                // 【全新原地行内编辑】6. 原地保存更新正文内容
+                const saveInlineEditChapter = async () => {
+                    if (!isAdmin.value) {
+                        showToast("非法操作拦截！", "error");
+                        return;
+                    }
+                    const { id, title, content } = editChapterForm.value;
+                    if (!title || !title.trim() || !content || !content.trim()) {
+                        showToast("章节标题及正文不能为空", "error");
+                        return;
+                    }
+
+                    if (USE_MOCK) {
+                        // 支持 ID + (book_id & chapter_num) 联合寻址双重寻防
+                        const target = chapters.value.find(c => 
+                            (c.id && id && Number(c.id) === Number(id)) || 
+                            (activeChapter.value && Number(c.book_id) === Number(activeChapter.value.book_id) && Number(c.chapter_num) === Number(activeChapter.value.chapter_num))
+                        );
+
+                        if (target) {
+                            target.title = title.trim();
+                            target.content = content;
+                            
+                            // 即时刷写当前的 activeChapter，完成页面零延迟渲染
+                            if (activeChapter.value) {
+                                activeChapter.value.title = title.trim();
+                                activeChapter.value.content = content;
+                            }
+                            
+                            isEditingChapter.value = false;
+                            showToast("本章内容已在当前页面保存成功");
+                        } else {
+                            showToast("未定位到章节记录，请重新进入本章", "error");
+                        }
+                    } else {
+                        try {
+                            const res = await fetch(`${API_BASE_URL}/chapters/${id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ title, content })
+                            });
+                            if (res.ok) {
+                                const updated = await res.json();
+                                const index = chapters.value.findIndex(c => c.id === id);
+                                if (index !== -1) chapters.value[index] = updated;
+                                activeChapter.value = updated;
+                                isEditingChapter.value = false;
+                                showToast("正文内容修改成功！");
+                            } else {
+                                showToast("服务器保存章节失败", "error");
+                            }
+                        } catch (err) {
+                            showToast("编辑正文内容 API 请求异常", "error");
+                        }
+                    }
+                };
+
+                // 7. 管理员操作：发布新小说
+                const handlePublishBook = async () => {
+                    if (!isAdmin.value) {
+                        showToast("权限错误！仅有 admin 身份可以发布小说", "error");
+                        return;
+                    }
+
+                    const { title, author, category, chapterTitle, chapterContent } = adminForm.value;
+                    if (!title || !author || !chapterTitle || !chapterContent) {
+                        showToast("请填满所有字段后再发布", "error");
+                        return;
+                    }
+
+                    if (USE_MOCK) {
+                        const newBookId = books.value.length ? Math.max(...books.value.map(b => b.id)) + 1 : 1;
+                        books.value.push({
+                            id: newBookId,
+                            title,
+                            author,
+                            category,
+                            views: 0,
+                            likes: 0,
+                            is_daily_rec: false
+                        });
+
+                        const newChapId = chapters.value.length ? Math.max(...chapters.value.map(c => c.id)) + 1 : 1;
+                        chapters.value.push({
+                            id: newChapId,
+                            book_id: newBookId,
+                            chapter_num: 1,
+                            title: chapterTitle,
+                            content: chapterContent
+                        });
+
+                        showToast(`《${title}》发布成功！已生成首章。`);
+                        showAdminModal.value = false;
+                        adminForm.value = { title: '', author: '', category: '玄幻', chapterTitle: '', chapterContent: '' };
+                    } else {
+                        try {
+                            const bookResponse = await fetch(`${API_BASE_URL}/books`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    title,
+                                    author,
+                                    category,
+                                    views: 0,
+                                    likes: 0,
+                                    is_daily_rec: false,
+                                    cover_img: ''
+                                })
+                            });
+                            
+                            if (!bookResponse.ok) throw new Error("书籍落库失败");
+                            const createdBook = await bookResponse.json();
+
+                            const chapterResponse = await fetch(`${API_BASE_URL}/chapters`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    book_id: createdBook.id,
+                                    chapter_num: 1,
+                                    title: chapterTitle,
+                                    content: chapterContent
+                                })
+                            });
+
+                            if (!chapterResponse.ok) throw new Error("书籍首章创建失败");
+
+                            showToast("后端部署成功！新书已安全上架。");
+                            showAdminModal.value = false;
+                            adminForm.value = { title: '', author: '', category: '玄幻', chapterTitle: '', chapterContent: '' };
+                            await loadData();
+                        } catch (err) {
+                            showToast(err.message, "error");
+                        }
+                    }
+                };
+
+                // ==========================================
+                // 常规用户操作逻辑
+                // ==========================================
+                const loadData = async () => {
+                    if (USE_MOCK) {
+                        books.value = [...mockBooks];
+                        chapters.value = [...mockChapters];
+                        bookshelf.value = [...mockBookshelf];
+                        comments.value = [...mockComments];
+                    } else {
+                        try {
+                            const [booksRes, chaptersRes, shelfRes, commentsRes, categoriesRes] = await Promise.all([
+                                fetch(`${API_BASE_URL}/books`),
+                                fetch(`${API_BASE_URL}/chapters`),
+                                fetch(`${API_BASE_URL}/bookshelf`),
+                                fetch(`${API_BASE_URL}/comments`),
+                                fetch(`${API_BASE_URL}/categories`)
+                            ]);
+                            books.value = await booksRes.json();
+                            chapters.value = await chaptersRes.json();
+                            bookshelf.value = await shelfRes.json();
+                            comments.value = await commentsRes.json();
+                            const remoteCategories = await categoriesRes.json();
+                            categories.value = remoteCategories.map(cat => cat.name);
+                        } catch (err) {
+                            showToast("数据加载异常，请检查后端运行状态", "error");
+                        }
+                    }
+                };
+
+                const handleLogin = async () => {
+                    const { username, password } = authForm.value;
+                    if (!username || !password) {
+                        showToast("请输入用户名和密码", "error");
+                        return;
+                    }
+
+                    if (USE_MOCK) {
+                        const user = mockUsers.find(u => u.username === username && u.password === password);
+                        if (user) {
+                            currentUser.value = { id: user.id, username: user.username };
+                            showLoginModal.value = false;
+                            showToast(`欢迎回来, ${user.username}!`);
+                        } else {
+                            showToast("账号或密码输入错误", "error");
+                        }
+                    } else {
+                        try {
+                            const response = await fetch(`${API_BASE_URL}/users/login`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ username, password })
+                            });
+                            if (response.ok) {
+                                const user = await response.json();
+                                currentUser.value = user;
+                                showLoginModal.value = false;
+                                showToast(`登录成功: ${user.username}`);
+                            } else {
+                                showToast("用户名或密码不正确", "error");
+                            }
+                        } catch (err) {
+                            showToast("数据库服务连接异常", "error");
+                        }
+                    }
+                };
+
+                const handleRegister = async () => {
+                    const { username, password } = authForm.value;
+                    if (!username || !password) {
+                        showToast("请填入完整的注册信息", "error");
+                        return;
+                    }
+
+                    if (USE_MOCK) {
+                        const id = mockUsers.length + 1;
+                        mockUsers.push({ id, username, password });
+                        currentUser.value = { id, username };
+                        showLoginModal.value = false;
+                        showToast("注册成功！欢迎体验新阅读时代。");
+                    } else {
+                        try {
+                            const response = await fetch(`${API_BASE_URL}/users/register`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ username, password })
+                            });
+                            if (response.ok) {
+                                const user = await response.json();
+                                currentUser.value = user;
+                                showLoginModal.value = false;
+                                showToast("注册成功！已为您自动登录。");
+                            } else {
+                                showToast("注册异常，该用户可能已注册过", "error");
+                            }
+                        } catch (err) {
+                            showToast("服务器请求出错", "error");
+                        }
+                    }
+                };
+
+                const handleLogout = () => {
+                    currentUser.value = null;
+                    isEditingChapter.value = false;
+                    showToast("您已安全退出当前会话");
+                };
+
+                const viewBookDetail = (bookId) => {
+                    selectedBook.value = books.value.find(b => b.id === bookId);
+                    switchView('detail');
+                };
+
+                const startReading = (bookId) => {
+                    const sortedChaps = bookChapters.value;
+                    if (sortedChaps.length > 0) {
+                        activeChapter.value = sortedChaps[0];
+                        switchView('reader');
+                    } else {
+                        showToast("该书籍尚未编写章节正文", "error");
+                    }
+                };
+
+                const readChapter = (chapter) => {
+                    activeChapter.value = chapter;
+                    switchView('reader');
+                };
+
+                const isInBookshelf = (bookId) => {
+                    if (!currentUser.value) return false;
+                    return bookshelf.value.some(item => item.user_id === currentUser.value.id && item.book_id === bookId);
+                };
+
+                const addToBookshelf = async (bookId) => {
+                    if (!currentUser.value) {
+                        showLoginModal.value = true;
+                        showToast("请先登录您的账号", "error");
+                        return;
+                    }
+
+                    if (USE_MOCK) {
+                        const newId = bookshelf.value.length ? Math.max(...bookshelf.value.map(i => i.id)) + 1 : 1;
+                        bookshelf.value.push({ id: newId, user_id: currentUser.value.id, book_id: bookId });
+                        showToast("已成功同步加入您的书架！");
+                    } else {
+                        try {
+                            const response = await fetch(`${API_BASE_URL}/bookshelf`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ user_id: currentUser.value.id, book_id: bookId })
+                            });
+                            if (response.ok) {
+                                const newShelfItem = await response.json();
+                                bookshelf.value.push(newShelfItem);
+                                showToast("加入书架成功");
+                            }
+                        } catch (err) {
+                            showToast("网络通信故障", "error");
+                        }
+                    }
+                };
+
+                const removeFromBookshelf = async (bookId) => {
+                    if (!currentUser.value) return;
+
+                    if (USE_MOCK) {
+                        bookshelf.value = bookshelf.value.filter(item => !(item.user_id === currentUser.value.id && item.book_id === bookId));
+                        showToast("已将其从书架上移出");
+                    } else {
+                        try {
+                            const match = bookshelf.value.find(item => item.user_id === currentUser.value.id && item.book_id === bookId);
+                            if (match) {
+                                const response = await fetch(`${API_BASE_URL}/bookshelf/${match.id}`, {
+                                    method: 'DELETE'
+                                });
+                                if (response.ok) {
+                                    bookshelf.value = bookshelf.value.filter(item => item.id !== match.id);
+                                    showToast("移除书架成功");
+                                }
+                            }
+                        } catch (err) {
+                            showToast("服务端接口响应错误", "error");
+                        }
+                    }
+                };
+
+                const likeBook = async (bookId) => {
+                    const targetBook = books.value.find(b => b.id === bookId);
+                    if (!targetBook) return;
+
+                    if (USE_MOCK) {
+                        targetBook.likes += 1;
+                        showToast("成功向其他用户安利了本书！👍");
+                    } else {
+                        try {
+                            const response = await fetch(`${API_BASE_URL}/books/${bookId}/like`, { method: 'POST' });
+                            if (response.ok) {
+                                targetBook.likes += 1;
+                                showToast("点赞成功！");
+                            }
+                        } catch (err) {
+                            showToast("点赞数据同步失败", "error");
+                        }
+                    }
+                };
+
+                const submitComment = async () => {
+                    if (!currentUser.value) {
+                        showLoginModal.value = true;
+                        showToast("请先登录，再发表高见", "error");
+                        return;
+                    }
+                    if (!newCommentContent.value.trim()) {
+                        showToast("请输入您的点评内容", "error");
+                        return;
+                    }
+
+                    const payload = {
+                        user_id: currentUser.value.id,
+                        username: currentUser.value.username,
+                        book_id: selectedBook.value.id,
+                        content: newCommentContent.value.trim(),
+                        created_at: new Date().toISOString().replace('T', ' ').substring(0, 16)
+                    };
+
+                    if (USE_MOCK) {
+                        const newId = comments.value.length ? Math.max(...comments.value.map(c => c.id)) + 1 : 1;
+                        comments.value.push({ id: newId, ...payload });
+                        newCommentContent.value = '';
+                        showToast("精彩书评发布成功！");
+                    } else {
+                        try {
+                            const response = await fetch(`${API_BASE_URL}/comments`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+                            if (response.ok) {
+                                const createdComment = await response.json();
+                                comments.value.push(createdComment);
+                                newCommentContent.value = '';
+                                showToast("点评成功");
+                            }
+                        } catch (err) {
+                            showToast("服务器暂时无法保存评论", "error");
+                        }
+                    }
+                };
+
+                const exitReader = () => {
+                    isEditingChapter.value = false; // 退出编辑状态
+                    switchView('detail');
+                };
+
+                const changeFontSize = (delta) => {
+                    const target = readerConfig.value.fontSize + delta;
+                    if (target >= 12 && target <= 32) {
+                        readerConfig.value.fontSize = target;
+                    }
+                };
+
+                const prevChapter = () => {
+                    isEditingChapter.value = false; // 翻页退出编辑状态
+                    const prev = bookChapters.value.find(c => c.chapter_num === activeChapter.value.chapter_num - 1);
+                    if (prev) activeChapter.value = prev;
+                };
+
+                const nextChapter = () => {
+                    isEditingChapter.value = false; // 翻页退出编辑状态
+                    const next = bookChapters.value.find(c => c.chapter_num === activeChapter.value.chapter_num + 1);
+                    if (next) activeChapter.value = next;
+                };
+
+                onMounted(() => {
+                    loadData();
+                });
+
+                return {
+                    currentView,
+                    categories,
+                    filterCategory,
+                    toast,
+                    showLoginModal,
+                    showAdminModal,
+                    adminModalTab,
+                    authTab,
+                    authForm,
+                    adminForm,
+                    newCategoryName,
+                    showEditBookModal,
+                    editBookForm,
+                    isEditingChapter,
+                    editChapterForm,
+                    currentUser,
+                    books,
+                    chapters,
+                    bookshelf,
+                    comments,
+                    selectedBook,
+                    activeChapter,
+                    newCommentContent,
+                    readerConfig,
+                    dailyRecBook,
+                    filteredBooks,
+                    bookshelfBooks,
+                    rankByViews,
+                    rankByLikes,
+                    bookChapters,
+                    bookComments,
+                    hasPrevChapter,
+                    hasNextChapter,
+                    isAdmin,
+                    switchView,
+                    goBack,
+                    quickFill,
+                    viewCategoryDetail,
+                    handleAddCategory,
+                    handleDeleteCategory,
+                    openEditBookModal,
+                    handleUpdateBook,
+                    startInlineEditChapter,
+                    cancelInlineEditChapter,
+                    saveInlineEditChapter,
+                    handlePublishBook,
+                    handleLogin,
+                    handleRegister,
+                    handleLogout,
+                    viewBookDetail,
+                    startReading,
+                    readChapter,
+                    isInBookshelf,
+                    addToBookshelf,
+                    removeFromBookshelf,
+                    likeBook,
+                    submitComment,
+                    exitReader,
+                    changeFontSize,
+                    prevChapter,
+                    nextChapter
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

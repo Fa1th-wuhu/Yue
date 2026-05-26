@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+
+# Local database and runtime data
+data/
+backend/data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment files
+.env
+.env.*
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Office temporary lock files
+~$*.docx
+~$*.doc
+~$*.xls
+~$*.xlsx
+
+# Logs
+*.log
+logs/
+
+# Docker / build artifacts
+*.tar

@@ -1,0 +1,16 @@
+services:
+  yue-app:
+    build: .
+    container_name: yue-app
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite:////app/data/yue.db
+      CORS_ORIGINS: "*"
+      FRONTEND_FILE: /app/code_artifact.html
+    volumes:
+      - yue_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  yue_data:
