@@ -37,3 +37,7 @@ logs/
 
 # Docker / build artifacts
 *.tar
+*.zip
+
+# Novel Resources
+小说资源/
