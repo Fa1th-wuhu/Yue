@@ -130,6 +130,20 @@ def update_book(book_id: int, payload: schemas.BookUpdate, db: Session = Depends
     return book
 
 
+@app.delete("/api/books/{book_id}")
+def delete_book(book_id: int, db: Session = Depends(get_db)):
+    book = db.get(models.Book, book_id)
+    if not book:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="书籍不存在")
+    # 手动删除关联，100%安全兼容任何 SQLite 外键设置
+    db.query(models.Chapter).filter(models.Chapter.book_id == book_id).delete()
+    db.query(models.Bookshelf).filter(models.Bookshelf.book_id == book_id).delete()
+    db.query(models.Comment).filter(models.Comment.book_id == book_id).delete()
+    db.delete(book)
+    db.commit()
+    return {"ok": True}
+
+
 @app.post("/api/books/{book_id}/like")
 def like_book(book_id: int, db: Session = Depends(get_db)):
     book = db.get(models.Book, book_id)

@@ -726,9 +726,12 @@
                         </div>
                     </div>
 
-                    <div class="pt-2 flex justify-end space-x-2.5">
-                        <button @click="showEditBookModal = false" class="bg-neutral-100 text-neutral-600 text-xs px-5 py-2.5 rounded-full transition font-bold">取消</button>
-                        <button @click="handleUpdateBook" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-6 py-2.5 rounded-full transition font-bold shadow-sm">保存修改</button>
+                    <div class="pt-2 flex justify-between items-center">
+                        <button @click="handleDeleteBook" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs px-4 py-2.5 rounded-full transition font-bold border border-rose-200">🗑️ 彻底删除</button>
+                        <div class="flex space-x-2">
+                            <button @click="showEditBookModal = false" class="bg-neutral-100 text-neutral-600 text-xs px-4 py-2.5 rounded-full transition font-bold">取消</button>
+                            <button @click="handleUpdateBook" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-5 py-2.5 rounded-full transition font-bold shadow-sm">保存修改</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1046,6 +1049,45 @@
                             }
                         } catch (err) {
                             showToast("修改小说信息 API 请求异常", "error");
+                        }
+                    }
+                };
+
+                // 管理员操作：彻底删除小说
+                const handleDeleteBook = async () => {
+                    if (!isAdmin.value) {
+                        showToast("无权操作！只有管理员 admin 能够删除小说", "error");
+                        return;
+                    }
+                    const { id, title } = editBookForm.value;
+                    if (!confirm(`⚠️ 危险警告！\n您确定要彻底删除《${title}》及其所属的所有章节和评论吗？\n此操作为物理删除，完全无法撤销！`)) {
+                        return;
+                    }
+
+                    if (USE_MOCK) {
+                        books.value = books.value.filter(b => b.id !== id);
+                        chapters.value = chapters.value.filter(c => c.book_id !== id);
+                        selectedBook.value = null;
+                        showEditBookModal.value = false;
+                        switchView('categoryDetail');
+                        showToast("小说物理删除成功");
+                    } else {
+                        try {
+                            const res = await fetch(`${API_BASE_URL}/books/${id}`, {
+                                method: 'DELETE'
+                            });
+                            if (res.ok) {
+                                books.value = books.value.filter(b => b.id !== id);
+                                chapters.value = chapters.value.filter(c => c.book_id !== id);
+                                selectedBook.value = null;
+                                showEditBookModal.value = false;
+                                switchView('categoryDetail');
+                                showToast("小说已在云端物理删除！");
+                            } else {
+                                showToast("服务端删除失败，请稍后重试", "error");
+                            }
+                        } catch (err) {
+                            showToast("删除小说 API 请求异常", "error");
                         }
                     }
                 };
@@ -1527,6 +1569,7 @@
                     handleDeleteCategory,
                     openEditBookModal,
                     handleUpdateBook,
+                    handleDeleteBook,
                     startInlineEditChapter,
                     cancelInlineEditChapter,
                     saveInlineEditChapter,
