@@ -103,6 +103,34 @@ def delete_category(cat_name: str, db: Session = Depends(get_db)):
     return {"ok": True}
 
 
+@app.get("/api/admin/stats")
+def get_admin_stats(db: Session = Depends(get_db)):
+    from sqlalchemy import func
+    total_books = db.query(models.Book).count()
+    total_chapters = db.query(models.Chapter).count()
+    
+    views_sum = db.query(func.sum(models.Book.views)).scalar()
+    total_views = int(views_sum) if views_sum is not None else 0
+    
+    likes_sum = db.query(func.sum(models.Book.likes)).scalar()
+    total_likes = int(likes_sum) if likes_sum is not None else 0
+    
+    total_comments = db.query(models.Comment).count()
+    
+    # 分类统计分布
+    results = db.query(models.Book.category, func.count(models.Book.id)).group_by(models.Book.category).all()
+    category_counts = {cat: count for cat, count in results}
+    
+    return {
+        "total_books": total_books,
+        "total_chapters": total_chapters,
+        "total_views": total_views,
+        "total_likes": total_likes,
+        "total_comments": total_comments,
+        "category_counts": category_counts
+    }
+
+
 @app.get("/api/books", response_model=list[schemas.BookOut])
 def list_books(db: Session = Depends(get_db)):
     return db.query(models.Book).order_by(models.Book.id.asc()).all()

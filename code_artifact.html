@@ -136,6 +136,13 @@
                     <span class="font-semibold text-neutral-900 text-sm tracking-tight">简阅 1.0</span>
                     <span class="text-[9px] text-[#0066cc] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full font-bold">STABLE</span>
                 </div>
+
+                <!-- 苹果极简动态搜索框 -->
+                <div class="relative w-40 sm:w-56 md:w-64 text-neutral-500">
+                    <input type="text" v-model="searchQuery" placeholder="🔍 检索书名、作者或题材..." 
+                           class="w-full text-[10px] sm:text-[11px] py-1.5 pl-8 pr-8 rounded-full bg-neutral-150/40 border border-neutral-200/50 focus:outline-none focus:bg-white focus:border-[#0066cc]/50 focus:ring-1 focus:ring-[#0066cc]/10 apple-transition font-medium">
+                    <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 text-sm font-light select-none focus:outline-none">&times;</button>
+                </div>
                 
                 <!-- 仅当登录用户为管理员时，才显示管理中心入口 -->
                 <div class="flex items-center space-x-4">
@@ -202,13 +209,13 @@
                                     <!-- 3D立体书脊拟物化投影 -->
                                     <div class="absolute inset-y-0 left-0 w-full book-spine-effect"></div>
                                     <div class="text-center relative z-10 px-2 space-y-2">
-                                        <span class="text-base font-extrabold text-neutral-900 tracking-tight line-clamp-2 px-2">{{ book.title }}</span>
+                                        <span class="text-base font-extrabold text-neutral-900 tracking-tight line-clamp-2 px-2" v-html="highlightText(book.title, searchQuery)"></span>
                                         <div class="w-6 h-0.5 bg-neutral-400 mx-auto"></div>
-                                        <span class="text-[11px] text-neutral-400 font-bold block">{{ book.author }}</span>
+                                        <span class="text-[11px] text-neutral-400 font-bold block" v-html="highlightText(book.author, searchQuery)"></span>
                                     </div>
                                 </div>
-                                <h4 class="font-extrabold text-sm text-neutral-900 line-clamp-1 group-hover:text-[#0066cc] apple-transition">{{ book.title }}</h4>
-                                <p class="text-xs text-neutral-400 mt-1 font-medium">由 {{ book.author }} 撰写</p>
+                                <h4 class="font-extrabold text-sm text-neutral-900 line-clamp-1 group-hover:text-[#0066cc] apple-transition" v-html="highlightText(book.title, searchQuery)"></h4>
+                                <p class="text-xs text-neutral-400 mt-1 font-medium">由 <span v-html="highlightText(book.author, searchQuery)"></span> 撰写</p>
                             </div>
                             <div class="mt-5 pt-4 border-t border-neutral-100 flex justify-between items-center text-[10px] text-neutral-400 font-bold tracking-tight">
                                 <span class="flex items-center"><span class="mr-1">👁️</span> {{ book.views }} 热度</span>
@@ -629,13 +636,16 @@
                     <button @click="showAdminModal = false" class="text-neutral-400 hover:text-neutral-600 text-xl font-light">&times;</button>
                 </div>
 
-                <!-- 分段选择器控制：新书发布 or 分类配置 -->
+                <!-- 分段选择器控制：新书发布 or 分类配置 or 系统数据大屏 -->
                 <div class="flex bg-neutral-100 p-1 rounded-xl">
-                    <button @click="adminModalTab = 'publish'" :class="adminModalTab === 'publish' ? 'bg-white text-neutral-950 font-bold shadow-sm' : 'text-neutral-500'" class="flex-1 py-1.5 rounded-lg text-xs apple-transition">
+                    <button @click="switchAdminTab('publish')" :class="adminModalTab === 'publish' ? 'bg-white text-neutral-950 font-bold shadow-sm' : 'text-neutral-500'" class="flex-1 py-1.5 rounded-lg text-xs apple-transition">
                         📚 上架新小说
                     </button>
-                    <button @click="adminModalTab = 'categories'" :class="adminModalTab === 'categories' ? 'bg-white text-neutral-950 font-bold shadow-sm' : 'text-neutral-500'" class="flex-1 py-1.5 rounded-lg text-xs apple-transition">
-                        🏷️ 栏目分类管理
+                    <button @click="switchAdminTab('categories')" :class="adminModalTab === 'categories' ? 'bg-white text-neutral-950 font-bold shadow-sm' : 'text-neutral-500'" class="flex-1 py-1.5 rounded-lg text-xs apple-transition">
+                        🏷️ 栏目分类
+                    </button>
+                    <button @click="switchAdminTab('stats')" :class="adminModalTab === 'stats' ? 'bg-white text-neutral-950 font-bold shadow-sm' : 'text-neutral-500'" class="flex-1 py-1.5 rounded-lg text-xs apple-transition">
+                        📊 运行数据看板
                     </button>
                 </div>
 
@@ -699,6 +709,48 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- TAB 3: 系统数据运维大屏 -->
+                <div v-if="adminModalTab === 'stats'" class="space-y-5 text-xs animate-apple-spring">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-neutral-50/80 p-4 rounded-2xl border border-neutral-150 shadow-sm flex flex-col justify-between">
+                            <span class="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">📚 总小说数</span>
+                            <span class="text-xl font-black text-neutral-800 block mt-2">{{ adminStats.total_books }} <small class="text-[10px] font-bold text-neutral-400">本</small></span>
+                        </div>
+                        <div class="bg-neutral-50/80 p-4 rounded-2xl border border-neutral-150 shadow-sm flex flex-col justify-between">
+                            <span class="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">📝 总章节数</span>
+                            <span class="text-xl font-black text-neutral-800 block mt-2">{{ adminStats.total_chapters }} <small class="text-[10px] font-bold text-neutral-400">章</small></span>
+                        </div>
+                        <div class="bg-neutral-50/80 p-4 rounded-2xl border border-neutral-150 shadow-sm flex flex-col justify-between">
+                            <span class="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">👁️ 累积浏览</span>
+                            <span class="text-xl font-black text-[#0066cc] block mt-2">{{ adminStats.total_views }} <small class="text-[10px] font-bold text-neutral-400">次</small></span>
+                        </div>
+                        <div class="bg-neutral-50/80 p-4 rounded-2xl border border-neutral-150 shadow-sm flex flex-col justify-between">
+                            <span class="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">💬 读者影评</span>
+                            <span class="text-xl font-black text-emerald-600 block mt-2">{{ adminStats.total_comments }} <small class="text-[10px] font-bold text-neutral-400">条</small></span>
+                        </div>
+                    </div>
+
+                    <!-- 分类饼图式进度条统计 -->
+                    <div class="space-y-3.5 bg-neutral-50/60 p-4 rounded-2xl border border-neutral-150">
+                        <h4 class="font-extrabold text-neutral-800 flex justify-between items-center text-[10px] uppercase tracking-wider">
+                            <span>🏷️ 主流题材分布占比</span>
+                            <span class="text-[9px] text-neutral-400 font-bold">（实时自愈型统计）</span>
+                        </h4>
+                        <div class="space-y-3.5">
+                            <div v-for="cat in categories" :key="cat" class="space-y-1">
+                                <div class="flex justify-between font-bold text-neutral-600 text-[10px]">
+                                    <span>{{ cat }}</span>
+                                    <span class="text-neutral-500">{{ adminStats.category_counts[cat] || 0 }} 本 ({{ getCategoryPercentage(cat) }}%)</span>
+                                </div>
+                                <div class="w-full bg-neutral-200/50 h-2 rounded-full overflow-hidden">
+                                    <div class="bg-[#0066cc] h-full rounded-full transition-all duration-550 ease-out" 
+                                         :style="{ width: getCategoryPercentage(cat) + '%' }"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -755,6 +807,7 @@
                 const previousView = ref('home'); 
                 const categories = ref(['玄幻', '都市', '科幻', '历史']);
                 const filterCategory = ref('全部');
+                const searchQuery = ref('');
 
                 // 辅助状态管理
                 const toast = ref({ show: false, message: '', type: 'success' });
@@ -770,6 +823,16 @@
                 // 编辑书籍控制
                 const showEditBookModal = ref(false);
                 const editBookForm = ref({ id: null, title: '', author: '', category: '' });
+
+                // 数据监控运维大屏状态
+                const adminStats = ref({
+                    total_books: 0,
+                    total_chapters: 0,
+                    total_views: 0,
+                    total_likes: 0,
+                    total_comments: 0,
+                    category_counts: {}
+                });
 
                 // 【全新重构】原地无缝行内编辑控制
                 const isEditingChapter = ref(false);
@@ -884,8 +947,25 @@
                     } else {
                         list = books.value.filter(b => b.category === filterCategory.value);
                     }
+                    // 模糊搜索逻辑
+                    const q = searchQuery.value.trim().toLowerCase();
+                    if (q) {
+                        list = list.filter(b => 
+                            b.title.toLowerCase().includes(q) || 
+                            b.author.toLowerCase().includes(q)
+                        );
+                    }
                     return list.sort((a, b) => b.views - a.views);
                 });
+
+                // 苹果风检索关键字高亮辅助函数
+                const highlightText = (text, query) => {
+                    if (!text) return '';
+                    if (!query || !query.trim()) return text;
+                    const escapedQuery = query.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'); // 避免 RegExp 关键字冲突
+                    const regex = new RegExp(`(${escapedQuery})`, 'gi');
+                    return text.replace(regex, `<mark class="bg-amber-100 text-amber-900 rounded px-1 font-extrabold">$1</mark>`);
+                };
 
                 const bookshelfBooks = computed(() => {
                     if (!currentUser.value) return [];
@@ -930,6 +1010,44 @@
                 // ==========================================
                 // 业务动作实现（管理员全局特权逻辑）
                 // ==========================================
+
+                // 加载并计算运维大屏统计指标
+                const fetchAdminStats = async () => {
+                    if (USE_MOCK) {
+                        const total_books = books.value.length;
+                        const total_chapters = chapters.value.length;
+                        const total_views = books.value.reduce((acc, b) => acc + (b.views || 0), 0);
+                        const total_likes = books.value.reduce((acc, b) => acc + (b.likes || 0), 0);
+                        const total_comments = comments.value.length;
+                        const category_counts = {};
+                        books.value.forEach(b => {
+                            category_counts[b.category] = (category_counts[b.category] || 0) + 1;
+                        });
+                        adminStats.value = { total_books, total_chapters, total_views, total_likes, total_comments, category_counts };
+                    } else {
+                        try {
+                            const res = await fetch(`${API_BASE_URL}/admin/stats`);
+                            if (res.ok) {
+                                adminStats.value = await res.json();
+                            }
+                        } catch (err) {
+                            console.error("加载云端大屏指标失败", err);
+                        }
+                    }
+                };
+
+                const switchAdminTab = async (tab) => {
+                    adminModalTab.value = tab;
+                    if (tab === 'stats') {
+                        await fetchAdminStats();
+                    }
+                };
+
+                const getCategoryPercentage = (cat) => {
+                    const count = adminStats.value.category_counts[cat] || 0;
+                    if (adminStats.value.total_books === 0) return 0;
+                    return Math.round((count / adminStats.value.total_books) * 100);
+                };
 
                 // 1. 管理员操作：增加分类栏目
                 const handleAddCategory = async () => {
@@ -1533,6 +1651,9 @@
                     showLoginModal,
                     showAdminModal,
                     adminModalTab,
+                    adminStats,
+                    switchAdminTab,
+                    getCategoryPercentage,
                     authTab,
                     authForm,
                     adminForm,
@@ -1552,6 +1673,8 @@
                     readerConfig,
                     dailyRecBook,
                     filteredBooks,
+                    searchQuery,
+                    highlightText,
                     bookshelfBooks,
                     rankByViews,
                     rankByLikes,
