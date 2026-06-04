@@ -10,7 +10,7 @@ BOOKS_META = {
         "author": "老魔童",
         "category": "都市",
         "views": 85100,
-        "likes": 2341,
+        "likes": 4500,       # 极高好评 (口碑神作)
         "is_daily_rec": True,
         "max_chapters": 150 # 导入前150章
     },
@@ -18,8 +18,8 @@ BOOKS_META = {
         "title": "三国之惧内王爷",
         "author": "一杯咸汁",
         "category": "历史",
-        "views": 62400,
-        "likes": 1823,
+        "views": 112000,     # 极高点击
+        "likes": 920,        # 较低点赞 (标题党/快餐爽文)
         "is_daily_rec": False,
         "max_chapters": 150 # 导入前150章
     },
@@ -27,7 +27,7 @@ BOOKS_META = {
         "title": "剑来",
         "author": "烽火戏诸侯",
         "category": "玄幻",
-        "views": 152000,
+        "views": 152000,     # 双料冠军
         "likes": 9821,
         "is_daily_rec": True,
         "max_chapters": 50 # 剑来非常长，导入前50章
@@ -36,8 +36,8 @@ BOOKS_META = {
         "title": "我的美女总裁未婚妻",
         "author": "霉干菜烧肉",
         "category": "都市",
-        "views": 71100,
-        "likes": 1941,
+        "views": 94000,      # 高点击
+        "likes": 1050,       # 中等点赞 (热销快餐文)
         "is_daily_rec": False,
         "max_chapters": 50 # 导入前50章
     },
@@ -45,8 +45,8 @@ BOOKS_META = {
         "title": "从追老婆开始走向巅峰",
         "author": "九月不度",
         "category": "都市",
-        "views": 43200,
-        "likes": 1102,
+        "views": 43200,      # 较低点击
+        "likes": 3200,       # 极高点赞 (小众神作/真爱粉极多)
         "is_daily_rec": False,
         "max_chapters": 50 # 导入前50章
     }
@@ -210,8 +210,20 @@ def parse_and_insert_books():
         print(f"成功将 {len(inserted_chapters)} 章节写入数据库！")
         conn.commit()
         
+    # 额外：对自带的种子书籍进行点击/点赞优化，进一步拉开榜单差距
+    print("\n正在对初始种子书籍进行点击/点赞数据优化以拉开榜单排名...")
+    seed_adjustments = [
+        (35000, 2500, "修仙从极简代码开始"),
+        (12053, 850, "银河战纪：全栈大帝"),
+        (8600, 420, "重回1998：我是系统架构师"),
+        (4342, 380, "大唐：我的代码能推演国运")
+    ]
+    for views, likes, title in seed_adjustments:
+        cursor.execute("UPDATE books SET views = ?, likes = ? WHERE title = ?", (views, likes, title))
+        
+    conn.commit()
     conn.close()
-    print("\n所有小说导入任务全部完成！")
+    print("\n所有小说导入与榜单优化任务全部完成！")
 
 if __name__ == "__main__":
     parse_and_insert_books()
