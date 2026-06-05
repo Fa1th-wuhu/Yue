@@ -18,7 +18,7 @@ def seed_data(db: Session) -> None:
         models.Category(name="历史"),
     ]
     books = [
-        models.Book(id=1, title="修仙从极简代码开始", author="无bug尊者", category="玄幻", views=8848, likes=231, is_daily_rec=True),
+        models.Book(id=1, title="剑来", author="烽火戏诸侯", category="玄幻", views=152000, likes=9821, is_daily_rec=True),
         models.Book(id=2, title="重回1998：我是系统架构师", author="键盘极客", category="都市", views=5621, likes=119),
         models.Book(id=3, title="银河战纪：全栈大帝", author="Docker船长", category="科幻", views=12053, likes=541),
         models.Book(id=4, title="大唐：我的代码能推演国运", author="极简刺客", category="历史", views=3342, likes=88),
