@@ -973,8 +973,11 @@
                 // 动态获取推荐小说描述/简介信息
                 const getBookDescription = (book) => {
                     if (!book) return '';
-                    if (book.title === '剑来') {
+                    if (book.title === '剑来' || book.title.includes('剑来')) {
                         return '大千世界，无奇不有。我陈平安，唯有一剑，可搬山，倒海，降妖，镇魔，敕神，摘星，断江，摧城，开天！';
+                    }
+                    if (book.title.includes('三体')) {
+                        return '给岁月以文明，而不是给文明以岁月。红岸基地发射的电波回荡在浩瀚宇宙，四光年外的三体世界已露出狰狞面目，人类文明的命运，在这一刻走向终极抉择。';
                     }
                     if (book.title === '修仙从极简代码开始' || book.title.includes('修仙从极简')) {
                         return '以极简主义重构经典架构。这里没有多余的代码，只有直击核心的精妙算法与高效部署。点击立刻开启沉浸之旅。';
